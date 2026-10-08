@@ -1,0 +1,54 @@
+name: Test bot (bot-testing-area)
+
+# Manual smoke test on Metaculus' sandbox tournament. Safe to run as often as you like:
+# these questions are not part of any prize tournament.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (do not post forecasts)"
+        type: boolean
+        default: false
+      limit:
+        description: "Max questions to forecast (keeps the test cheap)"
+        type: string
+        default: "3"
+      profile:
+        description: "Profile to test"
+        type: choice
+        options: [lean, standard, max, claude-only]
+        default: lean
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.11"
+      - name: Install dependencies
+        run: uv sync --frozen --no-dev
+      - name: Check setup
+        run: uv run --no-dev python scripts/check_setup.py
+        env:
+          METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ASKNEWS_CLIENT_ID: ${{ secrets.ASKNEWS_CLIENT_ID }}
+          ASKNEWS_SECRET: ${{ secrets.ASKNEWS_SECRET }}
+          ASKNEWS_API_KEY: ${{ secrets.ASKNEWS_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      - name: Forecast on bot-testing-area
+        run: |
+          ARGS="--mode test --profile ${{ inputs.profile }} --limit ${{ inputs.limit }}"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          uv run --no-dev python main.py $ARGS
+        env:
+          METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ASKNEWS_CLIENT_ID: ${{ secrets.ASKNEWS_CLIENT_ID }}
+          ASKNEWS_SECRET: ${{ secrets.ASKNEWS_SECRET }}
+          ASKNEWS_API_KEY: ${{ secrets.ASKNEWS_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}

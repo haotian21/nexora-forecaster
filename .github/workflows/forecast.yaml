@@ -1,0 +1,57 @@
+name: Forecast on new tournament questions
+
+# Tournament questions are only open for ~1.5 hours, so we check every 20 minutes.
+# Already-forecast questions are skipped, so runs without new questions finish in ~1 minute.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7,27,47 * * * *"
+
+concurrency:
+  group: forecast
+  cancel-in-progress: false
+
+jobs:
+  forecast:
+    # Pause the bot without editing files: Settings -> Secrets and variables -> Actions -> Variables -> NEXORA_PAUSED = true
+    if: ${{ vars.NEXORA_PAUSED != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: read
+      actions: write # only for the keepalive step
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.11"
+      - name: Install dependencies
+        run: uv sync --frozen --no-dev
+      - name: Forecast (seasonal tournament + MiniBench)
+        run: uv run --no-dev python main.py --mode tournament
+        env:
+          METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ASKNEWS_CLIENT_ID: ${{ secrets.ASKNEWS_CLIENT_ID }}
+          ASKNEWS_SECRET: ${{ secrets.ASKNEWS_SECRET }}
+          ASKNEWS_API_KEY: ${{ secrets.ASKNEWS_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          NEXORA_PROFILE: ${{ vars.NEXORA_PROFILE || 'standard' }}
+          NEXORA_MINIBENCH_PROFILE: ${{ vars.NEXORA_MINIBENCH_PROFILE || 'lean' }}
+          NEXORA_FORECASTERS: ${{ vars.NEXORA_FORECASTERS }}
+          NEXORA_BINARY_CAP: ${{ vars.NEXORA_BINARY_CAP }}
+          NEXORA_CALIB_A: ${{ vars.NEXORA_CALIB_A }}
+          NEXORA_CALIB_B: ${{ vars.NEXORA_CALIB_B }}
+          NEXORA_SEASONAL_TOURNAMENT: ${{ vars.NEXORA_SEASONAL_TOURNAMENT }}
+          NEXORA_MINIBENCH_TOURNAMENT: ${{ vars.NEXORA_MINIBENCH_TOURNAMENT }}
+      - name: Keep the schedule alive
+        # GitHub disables scheduled workflows in public repos after 60 days without commits, which
+        # would stop the bot mid-season. Re-enabling through the API resets that clock (Mondays, 00h UTC).
+        if: ${{ always() && github.event_name == 'schedule' }}
+        run: |
+          if [ "$(date -u +%u%H)" = "100" ]; then
+            gh api -X PUT "repos/${{ github.repository }}/actions/workflows/forecast.yaml/enable"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
