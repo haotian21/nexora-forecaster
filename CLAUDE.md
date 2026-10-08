@@ -26,11 +26,11 @@ research (parallel, all optional and time-boxed):
 
 ## Status at handoff (2026-09-26)
 
-- Code is complete. **64 offline tests pass** (`uv run pytest -q`), and a fresh install from `uv.lock` was verified.
+- Code is complete. **69 offline tests pass** (`uv run pytest -q`), and a fresh install from `uv.lock` was verified.
 - **2026-10-08 update (owner's Mac):**
   - Verified live: all model ids resolve; FRED CSV works; Yahoo answers 429, so stock prices fall back to Nasdaq; the Metaculus token works and tournament ids 33121 / `minibench` are right; `search=` is honoured; the real discrete MiniBench questions run through the pipeline.
   - Found and handled: Fall 2026 MiniBench is news-driven (see Tournament facts), so `lean` now includes web search.
-  - Still unverified, because the OpenRouter key is missing: LLM calls with reasoning effort, and real posting on the sandbox.
+  - Still unverified: LLM calls with reasoning effort, and real posting on the sandbox. The OpenRouter key is set but its account had no credits (402 on every call).
   - Published to GitHub (`haotian21/nexora-forecaster`) with the schedule paused (`NEXORA_PAUSED=true`).
 - **Nothing has run against live services yet.** The build sandbox could not reach Metaculus, OpenRouter, AskNews, FRED, Yahoo or the market APIs, so the first job on a real machine is live verification (next steps 3-4).
 - There is **no git history**: the project arrived as a zip. Start with `git init -b main`.
@@ -45,12 +45,15 @@ research (parallel, all optional and time-boxed):
    ```bash
    brew install uv gh    # or: curl -LsSf https://astral.sh/uv/install.sh | sh
    uv sync               # fetches Python 3.11 if needed
-   uv run pytest -q      # expect 64 passed
+   uv run pytest -q      # expect 69 passed
    ```
 2. **Accounts.** The owner creates these himself. **Never ask him to paste secrets into the chat**; he writes them into `.env` directly.
    - Metaculus bot account and token: https://www.metaculus.com/futureeval/participate/ (one bot per person).
    - Participant form, which also requests free LLM credits (they arrive as an OpenRouter key): https://forms.gle/aQdYMq9Pisrf1v7d8. Until then, use his own key from https://openrouter.ai/keys. **Set a credit limit on the key**; it is the hard budget cap.
-   - AskNews (free for bot makers, renew every season): via the Metaculus Discord "build a forecasting bot" channel or the contact on https://www.metaculus.com/notebooks/38928/ai-benchmark-resources/
+   - AskNews (free for bot makers, renew every season), process per the resources page as of 2026-10-08:
+     1. Create an account at https://my.asknews.app with the **same email as the Metaculus bot account**.
+     2. Message @freqai on the AskNews Discord, or email contact@asknews.app, with: bot name, AskNews email, first and last name, LinkedIn, and affiliation.
+     3. Once activated, generate `ASKNEWS_API_KEY` at https://my.asknews.app/en/settings/api-credentials.
 3. **Live checks.** Run `cp .env.template .env`; the owner fills it in. Then:
    ```bash
    uv run python scripts/check_setup.py     # token, key, resolved models per profile, 1 tiny LLM call, FRED/Yahoo/markets
@@ -145,7 +148,7 @@ Invariants that tests rely on. Keep them:
   - A comment is required on every forecast. Keep comments private; Metaculus publishes them after close.
   - Prize winners must share code or a description and verify their identity.
 - **Prizes:** the share is proportional to the **square** of the summed peer score, and nothing is paid if the sum is negative. Unforecast questions score 0.
-- **Resources:** AskNews gives about 1,000 calls/month and 4,000 per tournament. Metaculus sponsors LLM costs through the credits form (amount not published).
+- **Resources:** AskNews gives about 1,000 calls/month and 4,000 per tournament. A latest-news search (48 h) costs 1 call and an archive search costs 5. So `lean` (MiniBench) searches latest news only (1 call per question), the other profiles use both (6 calls), and calls are spaced 12 s apart for the free-tier rate limit. Metaculus' donated OpenRouter credits cover only OpenAI, Anthropic and Google models, so Perplexity web search may not work on that key; AskNews is then the only news source. Metaculus sponsors LLM costs through the credits form (amount not published).
 - **Benchmarks:**
   - Spring 2026 (Jan 7 – Apr 15): 173 bots, 111 external. Bots came close to the pros (gap not statistically significant). High-reasoning variants won 8/8 paired comparisons.
   - Summer 2026: "nostreambot" placed 15th of 277 with about $2.60 per question (3 models, median, AskNews plus several other sources).

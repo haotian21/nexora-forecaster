@@ -43,7 +43,7 @@ The MiniBench question templates of earlier seasons (FRED values, "will X's clos
 
 1. **Metaculus bot account.** Log in at <https://www.metaculus.com/futureeval/participate/>, create your bot (one bot per person) and copy its **token**.
 2. **Register for Fall 2026 and request free LLM credits** with the participant form: <https://forms.gle/aQdYMq9Pisrf1v7d8>. The credits arrive as an **OpenRouter key**. Until then you can create your own key at <https://openrouter.ai/keys>. Either way, **set a credit limit on the key** in the OpenRouter dashboard; that is your hard budget cap.
-3. **AskNews (recommended, free):** request or renew bot access through the Metaculus Discord ("build a forecasting bot" channel) or the contact on the [resources page](https://www.metaculus.com/notebooks/38928/ai-benchmark-resources/). You get about 1,000 calls/month and 4,000 per tournament.
+3. **AskNews (recommended, free):** follow "Getting AskNews Setup" on the [resources page](https://www.metaculus.com/notebooks/38928/ai-benchmark-resources/). Make an AskNews account with your bot account's email, ask AskNews to activate it, then create an `ASKNEWS_API_KEY`. You get about 1,000 calls/month and 4,000 per tournament; the bot spends 1 call per MiniBench question and 6 per seasonal question.
 4. **GitHub repository.** Push this folder to a new repository.
    - **Public** is simplest: Actions minutes are free.
    - **Private** works too, but the free plan includes only 2,000 minutes/month and a 20-minute schedule can exceed that. GitHub Pro gives 3,000 and is free with the GitHub Student Developer Pack.

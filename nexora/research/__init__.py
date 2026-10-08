@@ -95,7 +95,7 @@ async def gather_research(
         news_query, market_queries = parse_queries(raw_queries[0], question.question_text)
 
     news_task = (
-        asyncio.create_task(_guard(asknews_research(news_query), 240, "asknews"))
+        asyncio.create_task(_guard(asknews_research(news_query, archive=profile.asknews_archive), 240, "asknews"))
         if profile.use_asknews and asknews_configured()
         else None
     )

@@ -55,6 +55,8 @@ class Profile:
     helper: ModelSlot  # parsing, query generation, extraction (cheap, reliable)
     web_research: ModelSlot | None  # search-grounded research model (Perplexity)
     use_asknews: bool = True
+    # AskNews archive search (160 days) costs 5 of the free tier's ~1k monthly calls; latest news costs 1.
+    asknews_archive: bool = True
     use_markets: bool = True
     use_quant: bool = True
     use_similar: bool = True
@@ -83,6 +85,7 @@ PROFILES: dict[str, Profile] = {
         # Fall 2026 MiniBench asks about this week's news; without web search (or AskNews)
         # the forecasters would only have their training data.
         web_research=_web(),
+        asknews_archive=False,  # short-horizon questions: the latest 48 hours of news matter most
     ),
     "standard": Profile(
         name="standard",
