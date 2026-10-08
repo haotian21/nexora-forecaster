@@ -26,11 +26,12 @@ research (parallel, all optional and time-boxed):
 
 ## Status at handoff (2026-09-26)
 
-- Code is complete. **69 offline tests pass** (`uv run pytest -q`), and a fresh install from `uv.lock` was verified.
+- Code is complete. **73 offline tests pass** (`uv run pytest -q`), and a fresh install from `uv.lock` was verified.
 - **2026-10-08 update (owner's Mac):**
   - Verified live: all model ids resolve; FRED CSV works; Yahoo answers 429, so stock prices fall back to Nasdaq; the Metaculus token works and tournament ids 33121 / `minibench` are right; `search=` is honoured; the real discrete MiniBench questions run through the pipeline.
   - Found and handled: Fall 2026 MiniBench is news-driven (see Tournament facts), so `lean` now includes web search.
-  - Still unverified: LLM calls with reasoning effort, and real posting on the sandbox. The OpenRouter key is set but its account had no credits (402 on every call).
+  - Sandbox verified from the bot account: every model in `lean` and `standard` answered (medium and high effort, Gemini included), and research used Perplexity, AskNews and markets. Discrete, binary and MC forecasts were recorded on Metaculus, and the comments are `is_private: true`.
+  - The first sandbox run used a personal-account token, and Metaculus refused every forecast (403 `api_forecasting_not_enabled`). `nexora/account.py` now stops `main.py` before anything is posted if the token is not a bot account, and `_publish_report` stops publishing for the rest of a run on that 403.
   - Published to GitHub (`haotian21/nexora-forecaster`) with the schedule paused (`NEXORA_PAUSED=true`).
 - **Nothing has run against live services yet.** The build sandbox could not reach Metaculus, OpenRouter, AskNews, FRED, Yahoo or the market APIs, so the first job on a real machine is live verification (next steps 3-4).
 - There is **no git history**: the project arrived as a zip. Start with `git init -b main`.
@@ -45,7 +46,7 @@ research (parallel, all optional and time-boxed):
    ```bash
    brew install uv gh    # or: curl -LsSf https://astral.sh/uv/install.sh | sh
    uv sync               # fetches Python 3.11 if needed
-   uv run pytest -q      # expect 69 passed
+   uv run pytest -q      # expect 73 passed
    ```
 2. **Accounts.** The owner creates these himself. **Never ask him to paste secrets into the chat**; he writes them into `.env` directly.
    - Metaculus bot account and token: https://www.metaculus.com/futureeval/participate/ (one bot per person).
@@ -191,7 +192,7 @@ These come from published FutureEval analyses (sources below):
 5. **Title fields.** Which field forecasting-tools maps to `question_text` versus the post title is assumed. Detection checks both.
 6. **FRED CSV.** The header may be `observation_date,<ID>` or `DATE,<ID>`, and missing values may be `.` or empty; both are handled. `FRED_API_KEY` switches to the official API.
 7. **Yahoo.** The chart endpoint answered 429 to every request from a home IP (2026-09-26 and 2026-10-08), with or without cookie/crumb. `stocks.fetch_history` therefore falls back to Nasdaq's public API (`api.nasdaq.com`; asset class `stocks`, then `etf`; share-class dots kept, e.g. `BRK.B`), verified live. `check_setup.py` prints which source answered. If both fail, the question goes LLM-only.
-8. **Publishing.** Comment and forecast posting (`_publish_report`) has only been tested against a fake client. Verify it on the sandbox, including whether the comment shows as private. Comments are sent with `is_private=True, included_forecast=False`, because our forecast doesn't exist yet when the comment goes first.
+8. **Publishing.** *Verified on the sandbox 2026-10-08: forecasts recorded, comments private.* Private comments only appear in `/api/comments/` with `author=<bot user id>&is_private=true`; the bot account is required, since personal accounts get 403 on forecasts. Comments are sent with `is_private=True, included_forecast=False`, because our forecast doesn't exist yet when the comment goes first.
 
 ## Backlog (only after live verification; validate on sandbox or resolved questions)
 

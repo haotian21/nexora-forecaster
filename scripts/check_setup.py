@@ -22,6 +22,7 @@ dotenv.load_dotenv()
 import requests  # noqa: E402
 from forecasting_tools import MetaculusClient  # noqa: E402
 
+from nexora.account import account_problem, metaculus_account  # noqa: E402
 from nexora.config import PROFILES  # noqa: E402
 from nexora.models import ModelRegistry, SlotPlan, call_slot, openrouter_key_present  # noqa: E402
 from nexora.quant import fred, stocks  # noqa: E402
@@ -47,6 +48,13 @@ def main() -> int:
         try:
             user_id = client.get_current_user_id()
             line(OK, f"Metaculus token works (user id {user_id})")
+            account = metaculus_account()
+            problem = account_problem(account)
+            if problem:
+                line(FAIL, problem)
+                critical_failures += 1
+            elif account is not None:
+                line(OK, f"Bot account '{account.get('username')}' (API forecasting access: {account.get('api_forecasting_access')})")
             for label, tid in (("Seasonal", client.CURRENT_AI_COMPETITION_ID), ("MiniBench", client.CURRENT_MINIBENCH_ID)):
                 try:
                     questions = client.get_all_open_questions_from_tournament(tid)

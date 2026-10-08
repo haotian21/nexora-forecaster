@@ -29,6 +29,7 @@ warnings.filterwarnings("ignore", message=r".*does not support cost tracking.*")
 
 from forecasting_tools import ForecastReport, MetaculusClient  # noqa: E402
 
+from nexora.account import account_problem, metaculus_account  # noqa: E402
 from nexora.bot import DeferredQuestion, NexoraBot  # noqa: E402
 from nexora.config import PROFILES, Settings  # noqa: E402
 from nexora.models import ModelRegistry, openrouter_key_present  # noqa: E402
@@ -53,6 +54,11 @@ def check_environment(publish: bool) -> list[str]:
         problems.append("METACULUS_TOKEN is missing (create a bot account at https://www.metaculus.com/futureeval/participate/)")
     if not openrouter_key_present():
         problems.append("OPENROUTER_API_KEY is missing (free credits: https://forms.gle/aQdYMq9Pisrf1v7d8)")
+    if publish and not problems:
+        # A personal account's token would comment on every question and have every forecast refused.
+        problem = account_problem(metaculus_account(token))
+        if problem:
+            problems.append(problem)
     return problems
 
 

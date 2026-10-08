@@ -235,6 +235,30 @@ async def test_dry_run_posts_nothing(patched):
     assert client.calls == []
 
 
+async def test_forecasting_disabled_stops_publishing(patched):
+    refused = '403 Forbidden: {"detail":"API forecasting is not enabled","code":"api_forecasting_not_enabled"}'
+
+    class RefusingClient(FakeClient):
+        def post_binary_question_prediction(self, question_id, p):
+            raise RuntimeError(refused)
+
+        def post_multiple_choice_question_prediction(self, question_id, options):
+            raise RuntimeError(refused)
+
+        def post_numeric_question_prediction(self, question_id, cdf):
+            raise RuntimeError(refused)
+
+    client = RefusingClient()
+    bot = make_bot(client)
+    first = await bot.forecast_questions(make_questions(), return_exceptions=True)
+    assert all(isinstance(r, BaseException) for r in first)
+    comments = [c for c in client.calls if c[0] == "comment"]
+    assert 1 <= len(comments) <= len(first)  # only questions already publishing when the refusal came
+    second = await bot.forecast_questions(make_questions(), return_exceptions=True)
+    assert all(isinstance(r, BaseException) and "Not publishing" in str(r) for r in second)
+    assert [c for c in client.calls if c[0] == "comment"] == comments  # nothing more posted
+
+
 async def test_quant_blend_for_numeric(patched, monkeypatch):
     async def fred_quant(question, metaculus_client=None, timeout=25):
         if "Treasuries" not in question.question_text:

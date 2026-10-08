@@ -33,6 +33,7 @@ from forecasting_tools import (
 from forecasting_tools.data_models.multiple_choice_report import PredictedOption
 
 from nexora import prompts
+from nexora.account import FORECASTING_DISABLED_CODE, PARTICIPATE_URL
 from nexora.aggregation import (
     aggregate_binary,
     aggregate_multiple_choice,
@@ -65,6 +66,11 @@ class DeferredQuestion(RuntimeError):
     """Raised for questions not started before the run's soft deadline; the next run picks them up."""
 
 
+class PublishingBlocked(RuntimeError):
+    """Metaculus refused a forecast because API forecasting is disabled for this account. The
+    rest of the run posts nothing, so questions don't collect a comment each without a forecast."""
+
+
 class NexoraBot(ForecastBot):
     def __init__(
         self, settings: Settings, registry: ModelRegistry, deadline: float | None = None, **kwargs: Any
@@ -76,6 +82,7 @@ class NexoraBot(ForecastBot):
         self.helper_plan = SlotPlan(profile.helper, registry.resolve(profile.helper))
         self.web_plan = SlotPlan(profile.web_research, registry.resolve(profile.web_research)) if profile.web_research else None
         self._publish = settings.publish
+        self._publishing_blocked = False
         self._bundles: dict[int, ResearchBundle] = {}
         self._slot_counters: dict[int, int] = {}
         self._question_semaphore = asyncio.Semaphore(settings.max_concurrent_questions)
@@ -146,10 +153,28 @@ class NexoraBot(ForecastBot):
         client = self.metaculus_client
         if question.id_of_post is None or question.id_of_question is None:
             raise ValueError(f"Cannot publish: missing ids for {question.page_url}")
+        if self._publishing_blocked:
+            raise PublishingBlocked(f"Not publishing {question.page_url}: API forecasting is disabled for this account")
         # included_forecast=False: our forecast does not exist yet, so there is nothing to attach.
         await asyncio.to_thread(
             client.post_question_comment, question.id_of_post, report.explanation, is_private=True, included_forecast=False
         )
+        try:
+            await self._post_forecast(report)
+        except Exception as e:
+            if FORECASTING_DISABLED_CODE in str(e):
+                self._publishing_blocked = True
+                raise PublishingBlocked(
+                    "Metaculus refused the forecast: API forecasting is not enabled for this account. Use your bot "
+                    f"account's token ({PARTICIPATE_URL}) or confirm API forecasting in its account settings. "
+                    "Nothing more is posted this run."
+                ) from e
+            raise
+        logger.info(f"Published forecast + comment for {question.page_url}")
+
+    async def _post_forecast(self, report: ForecastReport) -> None:
+        question = report.question
+        client = self.metaculus_client
         prediction = report.prediction
         if isinstance(question, BinaryQuestion):
             await asyncio.to_thread(client.post_binary_question_prediction, question.id_of_question, float(prediction))
@@ -164,7 +189,6 @@ class NexoraBot(ForecastBot):
             await asyncio.to_thread(client.post_numeric_question_prediction, question.id_of_question, cdf)
         else:
             await report.publish_report_to_metaculus(metaculus_client=client)
-        logger.info(f"Published forecast + comment for {question.page_url}")
 
     # ------------------------------------------------------------------ research
 
